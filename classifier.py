@@ -1,3 +1,5 @@
+import argparse
+
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
@@ -95,7 +97,12 @@ class CentroidClassifier(Classifier):
     def predict(self):
         return np.sign((self.x_test @ self.weights) + self.bias)
 
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model", choices=["lp", "centroid"], default="centroid")
+    args = parser.parse_args()
+
     x = np.load("X_data.npy") #(70_000, 784)
     y = np.load("Y_data.npy") #(70_000, )
 
@@ -105,9 +112,12 @@ def main():
     perm = np.random.default_rng(0).permutation(len(y))
     x, y = x[perm], y[perm]
 
-    model = CentroidClassifier(x, y)
-    model.test_model()
-
+    if args.model == "centroid":
+        model = CentroidClassifier(x, y)
+        model.test_model()
+    elif args.model == "lp":
+        model = LPClassifier(x, y)
+        model.test_model()
 
 if __name__ == "__main__":
     main()
