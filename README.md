@@ -18,13 +18,13 @@ En gång för att hämta datan som som behövs.
 Sen är det bara att köra
 
 ```bash
-python classifier.py --centroid
+python classifier.py --model centroid
 ```
 
 För att köra programmet med centroid metoden.
 
 ```bash 
-python classifier.py --lp
+python classifier.py --model lp
 ```
 
 För att köra det med LP metoden.  

@@ -7,6 +7,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 NPFLOAT32 = NDArray[np.float32]
+NPINT32 = NDArray[np.int32]
 
 @dataclass
 class Classifier(ABC):
@@ -15,7 +16,7 @@ class Classifier(ABC):
 
     def __post_init__(self):
         self.split_data()
-        self.run()
+        self.w, self.b = self.run()
 
     def split_data(self):
         self.x_train, self.y_train = self.x[:11_000], self.y[:11_000]
@@ -27,25 +28,84 @@ class Classifier(ABC):
         acc = np.mean(predictions == self.y_test)
         print(f"{acc:%}")
 
-    @abstractmethod
-    def run(self):
-        pass
+    def predict(self) -> NPFLOAT32:
+        return np.sign((self.x_test @ self.w) + self.b)
 
     @abstractmethod
-    def predict(self):
+    def run(self) -> tuple[NPFLOAT32, int]:
         pass
-
 
 @dataclass
 class LPClassifier(Classifier):
-    def run(self):
+    def run(self) -> tuple[NPFLOAT32, int]:
         A, c = self.prepare_data()
-        self.simplex(A, c)
+        return self.simplex(A, c)
 
-    def simplex(self, A: NPFLOAT32, c: NPFLOAT32):
-        pass
+    def simplex(self, A: NPFLOAT32, c: NPFLOAT32) -> tuple[NPFLOAT32, int]:
+        # first xi is 785*2 = 1570 so xi is vars 1570 -> 12570
+        basis = np.arange(1569, 12570, 1).astype(np.int32)
+        self.initial_reduction(A) #mash objective row into correct shape
 
-    def prepare_data(self):
+        while True:
+            best_derivative_col = np.argmin(A[-1, :-1]).astype(np.int32) #exlude last col
+            best_derivative = A[-1, best_derivative_col]
+            if best_derivative >= 0:
+                np.save("output_matrix.npy", A)
+                acc = self.predict()
+                #z =
+
+                print("Global optimum found")
+                print(f"Total Cost: {c @ z}")
+                print(f"Accuracy: {acc:%}")
+                break
+
+            else:
+                # ignore last row (obj row)
+                ratios = A[:-1, -1] / A[:-1, best_derivative_col]
+
+                # tolerance so floating point noise doesn't hog the loop, otherwise near 0 entries
+                #might cause it to never stop
+                pos_ratios = ratios[ratios < -1e-9]
+                assert len(pos_ratios) > 0, "No rows meet the ratio test"
+
+                smallest_ratio_row = np.argmin(pos_ratios).astype(np.int32)
+                A[smallest_ratio_row, best_derivative_col] /= (
+                    A[smallest_ratio_row, best_derivative_col]
+                ) #only op in place
+
+                self.reduce_matrix(A, basis, smallest_ratio_row, best_derivative_col)
+
+        return self.construct_solution(A, basis)
+
+    @staticmethod
+    def construct_solution(A: NPFLOAT32, basis: NPINT32) -> tuple[NPFLOAT32, int]:
+        z = np.zeros(shape=(len(A[1, :]), ))
+        z[basis] = A[:, -1][basis] #read of r col in augmented matrix
+
+        #construct (w, b)
+        w = z[0: 784*2]
+        w = w.reshape(-1, 2)
+        w = w[:, 0] - w[:, 1]
+
+        b = z[784*2: 784*2 + 2]
+        b = b.reshape(-1, 2)
+        b = b[:, 0] - b[:, 1]
+        return w.astype(np.float32), int(b)
+
+    @staticmethod
+    def reduce_matrix(A: NPFLOAT32, row: np.int32, col: np.int32) -> None:
+        for i in range(A.shape[0]):
+            if i == row:
+                continue
+            else:
+                A[i, :] -= A[i, col] * A[row, :]
+
+    @staticmethod
+    def initial_reduction(A: NPFLOAT32) -> None:
+        for i in range(A.shape[0]-1):
+            A[-1, :] -= A[i, :]
+
+    def prepare_data(self) -> tuple[NPFLOAT32, NPFLOAT32]:
         ones = np.ones(shape=(len(self.y_train), ))
         yx = (self.x_train * self.y_train).astype(np.float32, copy=False)
         identity = np.eye(N=11_000)
@@ -75,27 +135,23 @@ class LPClassifier(Classifier):
 
         return A, c
 
-    def predict(self):
-        pass
-
 
 @dataclass
 class CentroidClassifier(Classifier):
-    def run(self):
+    def run(self) -> tuple[NPFLOAT32, int]:
         self.find_mean_vector()
-        self.find_hyperplane()
+        w, b = self.find_hyperplane()
+        return w, b
 
-    def find_mean_vector(self):
+    def find_mean_vector(self) -> None:
         self.mean_vector_zeroes = np.mean(self.x_train[(self.y_train == -1), :], axis=0)
         self.mean_vector_ones = np.mean(self.x_train[(self.y_train == 1), :], axis=0)
 
-    def find_hyperplane(self):
-        self.weights = self.mean_vector_ones - self.mean_vector_zeroes
+    def find_hyperplane(self) -> tuple[NPFLOAT32, int]:
+        weights = self.mean_vector_ones - self.mean_vector_zeroes
         middle_point = (1/2) * (self.mean_vector_zeroes + self.mean_vector_ones)
-        self.bias = -self.weights @ middle_point
-
-    def predict(self):
-        return np.sign((self.x_test @ self.weights) + self.bias)
+        bias = -weights @ middle_point
+        return weights.astype(np.float32), int(bias)
 
 
 def main():
