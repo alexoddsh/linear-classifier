@@ -5,9 +5,9 @@ Runna först:
 ```bash
 pip install .
 ```
-Eller uv/poetry eller vad ni nu använder som package manager för att ladda ner deps.För att ladda ned 
+Eller uv/poetry eller vad ni nu använder som package manager för att ladda ner deps.
 
-Kör sedan:
+För att ladda ned datan kör sedan:
 
 ```bash
 python data.py
