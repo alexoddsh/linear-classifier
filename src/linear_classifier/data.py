@@ -6,8 +6,8 @@ def load_mnist():
     x = mnist.data.astype(np.float32) / 255 # cast to float32 for speed and normalize X values to 0-1
     y = mnist.target.astype(np.float32)
 
-    np.save("X_data.npy", x)
-    np.save("Y_data.npy", y)
+    np.save("data/X_data.npy", x)
+    np.save("data/Y_data.npy", y)
 
 load_mnist()
 

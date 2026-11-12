@@ -5,6 +5,15 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "modal>=1.6.3",
     "numpy>=2.5.4",
     "scikit-learn>=1.9.1",
 ]
+
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "linear_classifier"
+module-root = "src"

@@ -3,9 +3,9 @@ För LINALG SF1672
 Runna först:
 
 ```bash
-pip install .
+pip install -e.
 ```
-Eller uv/poetry eller vad ni nu använder som package manager för att ladda ner deps.
+Eller uv/poetry eller vad ni nu använder som package manager för att installera packages.
 
 För att ladda ned datan kör sedan:
 
@@ -18,16 +18,16 @@ En gång för att hämta datan som som behövs.
 Sen är det bara att köra
 
 ```bash
-python classifier.py --model centroid
+python -m classifier --model centroid --mode local
 ```
 
-För att köra programmet med centroid metoden.
+För att köra programmet med centroid metoden lokalt.
 
 ```bash 
-python classifier.py --model lp
+python -m classifier --model lp --mode modal
 ```
 
-För att köra det med LP metoden.  
+För att köra det med LP metoden. Krävs att ni har modal. Kan göras lokalt men tar timmar... 
 
 Nuvarande val Acc centroid: 99.285714%
 Nuvarande val Acc LP: 
