@@ -44,7 +44,7 @@ class LPClassifier(Classifier):
 
     def simplex(self, A: NPFLOAT64) -> tuple[NPFLOAT64, np.float64]:
         n_rows, n_cols = A.shape[0], A.shape[1] - 1
-        start = 784 * 2 + 2  # 1572
+        start = 784 * 2 + 2  # 1570
         basis_row_to_var = {r: start + r for r in range(n_rows)}
         var_to_row = {start + r: r for r in range(n_rows)}
 
@@ -70,8 +70,10 @@ class LPClassifier(Classifier):
             assert best_derivative < 0
 
             # ignore last row (obj row)
-            ratios = A[:-1, -1] / A[:-1, best_derivative_col]
-            ratios[~(ratios > 0)] = xp.inf
+            col = A[:-1, best_derivative_col]
+            mask = col > 1e-9
+            ratios = xp.full(col.shape, xp.inf)
+            ratios[mask] = A[:-1, -1][mask] / col[mask]
 
             smallest_ratio_row = int(xp.argmin(ratios)) #forces sync
             leaving_var = basis_row_to_var[smallest_ratio_row]
@@ -89,18 +91,16 @@ class LPClassifier(Classifier):
     @staticmethod
     def construct_solution(A: NPFLOAT64, basis_row_to_var: dict[int, int], n_cols: int
                            ) -> tuple[NPFLOAT64, float]:
-        z = np.zeros(n_cols, dtype=np.float32)
+        z = np.zeros(n_cols, dtype=np.float64)
         rows = np.fromiter(basis_row_to_var.keys(), dtype=np.int32,
                            count=len(basis_row_to_var))
         vars_ = np.fromiter(basis_row_to_var.values(), dtype=np.int32,
                             count=len(basis_row_to_var))
         z[vars_] = A[rows, -1]
 
-        w = z[:784 * 2].reshape(-1, 2)
-        w = w[:, 0] - w[:, 1]
-        b = z[784 * 2: 784 * 2 + 2].reshape(-1, 2)
-        b = b[:, 0] - b[:, 1]
-        return w.astype(np.float32), float(b[0])
+        w = z[:784] - z[784:1568]
+        b = z[1568] - z[1569]
+        return w.astype(np.float64), float(b[0])
 
     @staticmethod
     def reduce_matrix(A, row, col):
@@ -123,9 +123,10 @@ class LPClassifier(Classifier):
         identity = np.eye(N=11_000)
 
         c = np.concatenate((
-            np.zeros(shape=(784*2 + 2*2, )),
-            np.ones(shape=(len(self.y_train),)),
-            np.zeros(shape=(len(self.y_train), ))
+            np.zeros(shape=(784*2 + 2, )),
+            np.ones(shape=(len(self.y_train), )),
+            np.zeros(shape=(len(self.y_train), )),
+            np.zeros(shape=(1, ))
         )).astype(np.float64, copy=False)
 
         A = np.concatenate((
@@ -138,6 +139,12 @@ class LPClassifier(Classifier):
             ones[:, None]), #r
             axis=1
         ).astype(np.float64, copy=False)
+
+        A = np.concatenate(
+            (A, c),
+            axis=0
+        ).astype(np.float64, copy=False)
+
         return A, c
 
 
