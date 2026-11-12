@@ -16,7 +16,7 @@ image = (
 
 volume = modal.Volume.from_name("linear-class")
 
-@app.cls(image=image, volumes={"/volume": volume}, gpu=["A10"], timeout=60 * 60 * 4)
+@app.cls(image=image, volumes={"/volume": volume}, gpu=["L4", "T4", "A10"], timeout=60 * 60 * 4)
 class RemoteRun:
     @modal.method()
     def class_runner(self, args):

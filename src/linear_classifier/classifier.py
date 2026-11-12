@@ -59,8 +59,9 @@ class LPClassifier(Classifier):
             if it % 100 == 0:
                 self.debug(A, it)
 
+            #note conversions force a GPU->CPU sync
             best_derivative_col = int(xp.argmin(A[-1, :-1])) #exlude last col
-            best_derivative = float(A[-1, best_derivative_col]) #sync
+            best_derivative = float(A[-1, best_derivative_col])
 
             if best_derivative >= 0:
                 xp.save(f"{DATA_DIR}/output.npy", A)
@@ -96,7 +97,7 @@ class LPClassifier(Classifier):
                            count=len(basis_row_to_var))
         vars_ = np.fromiter(basis_row_to_var.values(), dtype=np.int32,
                             count=len(basis_row_to_var))
-        z[vars_] = A[rows, -1]
+        z[vars_] = A[rows, -1].get()
 
         w = z[:784] - z[784:1568]
         b = z[1568] - z[1569]
@@ -118,9 +119,12 @@ class LPClassifier(Classifier):
         print(f"Iteration: {it}")
 
     def prepare_data(self) -> tuple[NPFLOAT64, NPFLOAT64]:
-        ones = np.ones(shape=(len(self.y_train), ))
+        r = np.ones(shape=(len(self.y_train), ))
+        r = r + np.random.uniform(low=-10**-7, high=10**-7, size=r.shape)
+        #random noise because we were stuck at 0 cycling
+
         yx = (self.x_train * self.y_train[:, None]).astype(np.float64, copy=False)
-        identity = np.eye(N=11_000)
+        identity = np.eye(N=len(self.y_train))
 
         c = np.concatenate((
             np.zeros(shape=(784*2 + 2, )),
@@ -136,12 +140,12 @@ class LPClassifier(Classifier):
             -1*self.y_train[:, None],
             identity,
             -1*identity,
-            ones[:, None]), #r
+            r[:, None]), #r
             axis=1
         ).astype(np.float64, copy=False)
 
         A = np.concatenate(
-            (A, c),
+            (A, c[None, :]),
             axis=0
         ).astype(np.float64, copy=False)
 
@@ -163,7 +167,7 @@ class CentroidClassifier(Classifier):
         weights = self.mean_vector_ones - self.mean_vector_zeroes
         middle_point = (1/2) * (self.mean_vector_zeroes + self.mean_vector_ones)
         bias = -weights @ middle_point
-        return weights.astype(np.float64), float(bias[0])
+        return weights.astype(np.float64), float(bias)
 
 
 def main(args):

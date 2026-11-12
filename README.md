@@ -28,6 +28,7 @@ python -m classifier --model lp --mode modal
 ```
 
 För att köra det med LP metoden. Krävs att ni har modal. Kan göras lokalt men tar timmar... 
+.env var USE_GPU måste vara set till 0 (local) eller 1 (modal).
 
 Nuvarande val Acc centroid: 99.285714%
 Nuvarande val Acc LP: 
